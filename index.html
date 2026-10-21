@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monopoly</title>
+<meta name="description" content="Interactive monopoly: MR = MC sets quantity, demand sets price, profit/break-even/loss, and the deadweight loss vs. perfect competition.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#f4f1ea; --panel:#ffffff; --ink:#1a2238; --navy:#1a2238; --muted:#5d6577;
+  --line:#d9d3c6; --line-strong:#b9b1a0;
+  --dem:#1a2238;      /* demand = navy */
+  --mr:#c98a1b;       /* MR = amber */
+  --mc:#b23a3a;       /* MC = red */
+  --atc:#1f7a8c;      /* ATC = teal */
+  --profit:#2e7d4f; --profit-soft:#d8ecdf;
+  --loss:#b23a3a; --loss-soft:#f3dede;
+  --dwl:#6a3fb0; --dwl-soft:#e7ddf5;
+  --dot:#e0a32a;
+  --shadow:0 1px 2px rgba(26,34,56,.06),0 8px 24px rgba(26,34,56,.08);
+}
+:root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
+  --bg:#12151f; --panel:#1b1f2d; --ink:#e9ecf3; --navy:#aab6d6; --muted:#9aa2b5;
+  --line:#2c3344; --line-strong:#3c465c;
+  --dem:#8da4d8; --mr:#e0a84a; --mc:#e07a7a; --atc:#49b6c9;
+  --profit:#5fc088; --profit-soft:#153226; --loss:#e07a7a; --loss-soft:#3a1d1d;
+  --dwl:#b494ea; --dwl-soft:#2a2140; --dot:#e8b94e;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --bg:#12151f; --panel:#1b1f2d; --ink:#e9ecf3; --navy:#aab6d6; --muted:#9aa2b5;
+  --line:#2c3344; --line-strong:#3c465c;
+  --dem:#8da4d8; --mr:#e0a84a; --mc:#e07a7a; --atc:#49b6c9;
+  --profit:#5fc088; --profit-soft:#153226; --loss:#e07a7a; --loss-soft:#3a1d1d;
+  --dwl:#b494ea; --dwl-soft:#2a2140; --dot:#e8b94e;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif; line-height:1.55;
+  padding:0 max(16px,env(safe-area-inset-right)) 64px max(16px,env(safe-area-inset-left));
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1120px;margin:0 auto}
+header{padding:38px 0 8px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h1{font-family:"Spectral",Georgia,serif;font-weight:700;font-size:clamp(28px,5vw,42px);line-height:1.08;margin:0 0 10px;color:var(--navy)}
+.lede{font-size:clamp(15px,2.2vw,17px);color:var(--muted);max-width:70ch;margin:0}
+
+.grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:26px}
+@media(min-width:900px){.grid{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow)}
+.panel h2{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:19px;margin:0 0 4px;color:var(--navy)}
+.panel .sub{font-size:13px;color:var(--muted);margin:0 0 14px}
+
+svg{display:block;width:100%;height:auto;touch-action:none}
+.axis{stroke:var(--line-strong);stroke-width:1.5}
+.grid-l{stroke:var(--line);stroke-width:1}
+.tick{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:var(--muted)}
+.curve{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.c-dem{stroke:var(--dem)} .c-mr{stroke:var(--mr);stroke-dasharray:7 6} .c-mc{stroke:var(--mc)} .c-atc{stroke:var(--atc)}
+.guide{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:4 4;fill:none;opacity:.8}
+.lab{font-family:"IBM Plex Sans",sans-serif;font-size:13px;font-weight:600}
+.lab-mono{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500}
+.dot{fill:var(--dot);stroke:var(--panel);stroke-width:2}
+.dot-c{fill:var(--panel);stroke:var(--mc);stroke-width:2.5}
+
+.scenarios{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.scenarios button{font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:600;border:1.5px solid var(--line-strong);background:transparent;color:var(--ink);border-radius:999px;padding:7px 13px;cursor:pointer;transition:all .15s}
+.scenarios button:hover{border-color:var(--ink)}
+.scenarios button.active{background:var(--navy);border-color:var(--navy);color:var(--panel)}
+.scenarios button.reveal{border-color:var(--dwl);color:var(--dwl)}
+.scenarios button.reveal.active{background:var(--dwl);border-color:var(--dwl);color:#fff}
+
+.sliderrow{display:flex;align-items:center;gap:12px;margin:16px 0 4px}
+.sliderrow label{font-size:13px;color:var(--muted);white-space:nowrap}
+input[type=range]{flex:1;accent-color:var(--navy)}
+.dval{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px;color:var(--navy);min-width:62px;text-align:right}
+
+.toggles{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:14px;font-size:13px}
+.toggles label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink)}
+.toggles input{accent-color:var(--navy);width:15px;height:15px}
+.sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+
+.readout{border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:4px;background:var(--bg)}
+.readout .title{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.readout .line{font-size:14.5px;margin:0 0 9px}
+.readout .line:last-child{margin-bottom:0}
+.readout b{color:var(--navy)}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:5px;margin:0 1px}
+.pill.p{background:var(--profit-soft);color:var(--profit)} .pill.l{background:var(--loss-soft);color:var(--loss)}
+.pill.d{background:var(--dwl-soft);color:var(--dwl)} .pill.n{background:color-mix(in srgb,var(--navy) 14%,transparent);color:var(--navy)}
+
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
+.stats .box{border:1px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center}
+.stats .box .k{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.stats .box .v{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:600;margin-top:2px;color:var(--navy)}
+.stats .box.prof .v{color:var(--profit)} .stats .box.prof.neg .v{color:var(--loss)}
+
+.note{margin-top:20px;border-left:3px solid var(--dwl);padding:4px 0 4px 16px}
+.note h3{font-family:"Spectral",Georgia,serif;font-size:16px;font-weight:600;margin:0 0 6px;color:var(--navy)}
+.note p{font-size:14px;color:var(--muted);margin:0 0 8px}
+.note p:last-child{margin-bottom:0}
+
+footer{max-width:1120px;margin:28px auto 0;font-size:12.5px;color:var(--muted);text-align:center}
+.theme-toggle{position:fixed;top:14px;right:max(14px,env(safe-area-inset-right));z-index:10;font-family:"IBM Plex Mono",monospace;font-size:12px;border:1px solid var(--line-strong);background:var(--panel);color:var(--muted);border-radius:999px;padding:6px 12px;cursor:pointer}
+.theme-toggle:hover{color:var(--ink);border-color:var(--ink)}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0;font-style:italic}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeBtn" aria-label="Toggle dark mode">◐ theme</button>
+<div class="wrap">
+  <header>
+    <p class="kicker">ECON 2103 · Monopoly</p>
+    <h1>The Monopolist's Choice</h1>
+    <p class="lede">One seller, no close substitutes. The monopolist picks the output where <strong>MR = MC</strong>, then charges the highest price buyers will pay for it — read straight up to the <strong>demand</strong> curve. Drag the demand curve or use the scenario buttons, and switch on the competitive benchmark to see the <strong>deadweight loss</strong>.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>The Firm = The Market</h2>
+      <p class="sub">Quantity comes from MR = MC; price always comes from the demand curve (P &gt; MR).</p>
+      <div id="chart"></div>
+      <p class="hint">Tip: drag the <span style="color:var(--dem);font-weight:600">demand</span> line up or down, or drag the slider below.</p>
+      <div class="sliderrow">
+        <label for="dslider">Demand level</label>
+        <input type="range" id="dslider" min="8" max="16" step="0.1" value="14">
+        <span class="dval" id="dval"></span>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="t-pl" checked><span class="sw" style="background:var(--profit)"></span>Profit / loss box</label>
+        <label><input type="checkbox" id="t-dwl"><span class="sw" style="background:var(--dwl)"></span>Competitive benchmark + DWL</label>
+        <label><input type="checkbox" id="t-mr" checked><span class="sw" style="background:var(--mr)"></span>MR curve</label>
+        <label><input type="checkbox" id="t-atc" checked><span class="sw" style="background:var(--atc)"></span>ATC curve</label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>What's happening</h2>
+      <p class="sub">Pick an outcome, or reveal the inefficiency.</p>
+      <div class="scenarios" id="scenarios">
+        <button data-s="profit">Economic profit</button>
+        <button data-s="be">Break-even</button>
+        <button data-s="loss">Loss</button>
+        <button data-s="reveal" class="reveal">★ Why it's inefficient</button>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="readout" id="readout" style="margin-top:14px">
+        <p class="title">Reading the graph</p>
+        <p class="line" id="rLine1"></p>
+        <p class="line" id="rLine2"></p>
+      </div>
+
+      <div class="note">
+        <h3>Why a monopoly is inefficient</h3>
+        <p>Because <b>P &gt; MR = MC</b>, the monopolist stops short of the efficient quantity. A competitive market would keep producing until <span class="pill n">P = MC</span> — a larger quantity at a lower price.</p>
+        <p>The units between the monopoly quantity and the competitive quantity are worth more to buyers than they cost to make, but never get produced. That lost value is the <span class="pill d">deadweight loss</span> — the triangle between demand and MC.</p>
+        <p><b>Market power, not higher cost,</b> is what raises the price: same cost curves, fewer units, a higher price, and profit that can persist because barriers to entry keep rivals out.</p>
+      </div>
+    </section>
+  </div>
+  <footer>Illustrative model for teaching · ECON 2103 Principles of Microeconomics.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // ---- economics ----
+  // Demand P=a-Q ; MR=a-2Q ; MC=2+Q ; ATC=8/Q+2+0.5Q
+  function D(q,a){return a-q;}
+  function MR(q,a){return a-2*q;}
+  function MC(q){return 2+q;}
+  function ATC(q){return 8/q+2+0.5*q;}
+  function qm(a){return Math.max(0,(a-2)/3);}      // MR=MC
+  function qc(a){return Math.max(0,(a-2)/2);}      // D=MC (efficient)
+  function solveBE(){ // Pm == ATC(qm): bisect a in [8,14]
+    function f(a){var q=qm(a);return D(q,a)-ATC(q);}
+    var lo=8,hi=14,m;
+    for(var i=0;i<60;i++){m=(lo+hi)/2; if(f(lo)*f(m)<=0) hi=m; else lo=m;}
+    return (lo+hi)/2;
+  }
+  var A_PROFIT=14, A_LOSS=8, A_BE=solveBE();
+  var QMAX=14, PMAX=16;
+
+  // ---- geometry ----
+  var W=760,H=560, ML=52, MR_=78, MT=24, MB=48;
+  function X(q){return ML + (q/QMAX)*(W-ML-MR_);}
+  function Y(p){return (H-MB) - (p/PMAX)*(H-MT-MB);}
+  function col(name){return getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim();}
+
+  var state={a:14, scenario:'profit', pl:true, dwl:false, mr:true, atc:true};
+
+  function esc(){} // noop
+  function polyline(fn,a,qlo,qhi,cls,extra){
+    var pts=[],N=120;
+    for(var i=0;i<=N;i++){var q=qlo+(qhi-qlo)*i/N; var p=fn(q,a);
+      if(p<-0.5||p>PMAX+2){continue;} if(q<=0)continue;
+      pts.push(X(q).toFixed(1)+','+Y(p).toFixed(1));}
+    return '<polyline class="curve '+cls+'" points="'+pts.join(' ')+'" '+(extra||'')+'/>';
+  }
+  function lineSeg(q1,p1,q2,p2,cls,extra){return '<line class="'+cls+'" x1="'+X(q1)+'" y1="'+Y(p1)+'" x2="'+X(q2)+'" y2="'+Y(p2)+'" '+(extra||'')+'/>';}
+
+  function render(){
+    var a=state.a;
+    var Qm=qm(a), Pm=D(Qm,a), atcm=ATC(Qm), mcm=MC(Qm);
+    var profit=(Pm-atcm)*Qm;
+    var Qc=qc(a), Pc=D(Qc,a);
+    var dwl=0.5*(Qc-Qm)*(Pm-mcm);
+    var isProfit=profit>=0;
+
+    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Monopoly diagram">';
+    // gridlines + ticks
+    var gp='';
+    for(var p=0;p<=PMAX;p+=2){ gp+='<line class="grid-l" x1="'+ML+'" y1="'+Y(p)+'" x2="'+(W-MR_)+'" y2="'+Y(p)+'"/>';
+      gp+='<text class="tick" x="'+(ML-8)+'" y="'+(Y(p)+4)+'" text-anchor="end">'+p+'</text>';}
+    s+=gp;
+
+    // ---- shaded regions (draw first, under curves) ----
+    // profit / loss rectangle: x 0..Qm, y between Pm and atcm
+    if(state.pl && Qm>0){
+      var yA=Y(Pm), yB=Y(atcm), x0=X(0), x1=X(Qm);
+      var fill=isProfit?col('profit-soft'):col('loss-soft');
+      s+='<rect x="'+x0+'" y="'+Math.min(yA,yB)+'" width="'+(x1-x0)+'" height="'+Math.abs(yB-yA)+'" fill="'+fill+'" opacity="0.9"/>';
+    }
+    // DWL triangle: vertices (Qm,Pm)(demand) , (Qm,mcm)(MC) , (Qc,Pc=MC(Qc)) ; between demand and MC
+    if(state.dwl && Qc>Qm){
+      var tri=X(Qm)+','+Y(Pm)+' '+X(Qm)+','+Y(mcm)+' '+X(Qc)+','+Y(Pc);
+      s+='<polygon points="'+tri+'" fill="'+col('dwl-soft')+'" opacity="0.95" stroke="'+col('dwl')+'" stroke-width="1.2"/>';
+    }
+
+    // ---- curves ----
+    if(state.mr) s+=polyline(MR,a,0.01,a/2,'c-mr');
+    s+=polyline(MC,null,0.01,QMAX,'c-mc');
+    if(state.atc) s+=polyline(ATC,null,0.5,QMAX,'c-atc');
+    s+=polyline(D,a,0.01,QMAX,'c-dem');
+
+    // ---- guides ----
+    s+=lineSeg(Qm,0,Qm,Pm,'guide');                 // vertical at Qm
+    s+=lineSeg(0,Pm,Qm,Pm,'guide');                 // horizontal Pm
+    if(state.pl) s+=lineSeg(0,atcm,Qm,atcm,'guide');// ATC level
+    if(state.dwl){
+      s+=lineSeg(Qc,0,Qc,Pc,'guide');
+      s+=lineSeg(0,Pc,Qc,Pc,'guide');
+    }
+
+    // ---- dots ----
+    s+='<circle class="dot-c" cx="'+X(Qm)+'" cy="'+Y(mcm)+'" r="5"/>';     // MR=MC
+    s+='<circle class="dot" cx="'+X(Qm)+'" cy="'+Y(Pm)+'" r="6.5"/>';      // monopoly price on demand
+    if(state.dwl) s+='<circle class="dot" cx="'+X(Qc)+'" cy="'+Y(Pc)+'" r="5" style="fill:var(--muted)"/>';
+
+    // ---- axis ----
+    s+='<line class="axis" x1="'+ML+'" y1="'+MT+'" x2="'+ML+'" y2="'+(H-MB)+'"/>';
+    s+='<line class="axis" x1="'+ML+'" y1="'+(H-MB)+'" x2="'+(W-MR_)+'" y2="'+(H-MB)+'"/>';
+    s+='<text class="tick" x="'+(ML-30)+'" y="'+(MT+2)+'">$/unit</text>';
+    s+='<text class="tick" x="'+(W-MR_+6)+'" y="'+(H-MB+4)+'">q</text>';
+
+    // ---- curve labels ----
+    s+='<text class="lab" x="'+(X(QMAX)-10)+'" y="'+(Y(D(QMAX-0.3,a))-6)+'" fill="'+col('dem')+'">D</text>';
+    if(state.mr) s+='<text class="lab" x="'+(X(a/2*0.62)+4)+'" y="'+(Y(MR(a/2*0.62,a))+16)+'" fill="'+col('mr')+'">MR</text>';
+    s+='<text class="lab" x="'+(X(QMAX-0.4)+4)+'" y="'+(Y(MC(QMAX-1.6)))+'" fill="'+col('mc')+'">MC</text>';
+    if(state.atc) s+='<text class="lab" x="'+(X(QMAX-0.6)+4)+'" y="'+(Y(ATC(QMAX-0.6))+4)+'" fill="'+col('atc')+'">ATC</text>';
+
+    // Pm / Qm labels
+    s+='<text class="lab-mono" x="'+(X(0)+4)+'" y="'+(Y(Pm)-5)+'" fill="'+col('navy')+'">Pₘ='+Pm.toFixed(1)+'</text>';
+    s+='<text class="lab-mono" x="'+X(Qm)+'" y="'+(H-MB+16)+'" text-anchor="middle" fill="'+col('navy')+'">Qₘ</text>';
+    if(state.pl) s+='<text class="lab-mono" x="'+(X(0)+4)+'" y="'+(Y(atcm)+(Pm>atcm?14:-5))+'" fill="'+col('atc')+'">ATC='+atcm.toFixed(1)+'</text>';
+    if(state.dwl){
+      s+='<text class="lab-mono" x="'+X(Qc)+'" y="'+(H-MB+16)+'" text-anchor="middle" fill="'+col('muted')+'">Q_c</text>';
+      // DWL label near triangle centroid
+      var cx=(X(Qm)*2+X(Qc))/3, cy=(Y(Pm)+Y(mcm)+Y(Pc))/3;
+      s+='<text class="lab-mono" x="'+(cx+6)+'" y="'+cy+'" fill="'+col('dwl')+'" font-weight="600">DWL</text>';
+    }
+    s+='</svg>';
+    document.getElementById('chart').innerHTML=s;
+
+    // ---- stats ----
+    document.getElementById('stats').innerHTML=
+      box('Quantity Qₘ',Qm.toFixed(2))+
+      box('Price Pₘ','$'+Pm.toFixed(2))+
+      box('Profit', (profit>=0?'+':'−')+'$'+Math.abs(profit).toFixed(1),'prof'+(profit<0?' neg':''));
+
+    // ---- readout ----
+    var l1,l2;
+    var plword = isProfit?'<span class="pill p">profit</span>':'<span class="pill l">loss</span>';
+    l1='Set <b>Qₘ</b> where MR = MC (q = '+Qm.toFixed(2)+'), then read the price <b>up to demand</b>: <b>Pₘ = $'+Pm.toFixed(2)+'</b>. Average cost there is $'+atcm.toFixed(2)+', so the firm earns a per-unit '+(isProfit?'margin':'shortfall')+' of $'+Math.abs(Pm-atcm).toFixed(2)+' on '+Qm.toFixed(2)+' units — '+plword+' of '+(isProfit?'+':'−')+'$'+Math.abs(profit).toFixed(1)+'.';
+    if(Math.abs(Pm-atcm)<0.05){
+      l1='This is <b>break-even</b>: the demand curve just touches ATC at Qₘ, so Pₘ = ATC = $'+Pm.toFixed(2)+' and economic profit is $0. Even a monopolist can be driven to zero profit when demand is weak — it still produces where MR = MC.';
+    }
+    if(state.dwl){
+      l2='A competitive market produces where <span class="pill n">P = MC</span>: Q_c = '+Qc.toFixed(2)+' at $'+Pc.toFixed(2)+' — <b>more output, lower price</b> than the monopoly’s '+Qm.toFixed(2)+' at $'+Pm.toFixed(2)+'. The units in between are the <span class="pill d">deadweight loss</span> ≈ $'+dwl.toFixed(1)+'.';
+    } else {
+      l2='Notice <b>Pₘ sits above MR and above MC</b> — the gap is the monopolist’s market power. Turn on the competitive benchmark to see what society loses.';
+    }
+    document.getElementById('rLine1').innerHTML=l1;
+    document.getElementById('rLine2').innerHTML=l2;
+
+    document.getElementById('dval').textContent='a = '+a.toFixed(1);
+    document.getElementById('dslider').value=a;
+  }
+  function box(k,v,cls){return '<div class="box '+(cls||'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';}
+
+  // ---- interactions ----
+  function setA(a){state.a=Math.max(8,Math.min(16,a)); render();}
+  function setScenario(s){
+    document.querySelectorAll('#scenarios button').forEach(function(b){ if(b.dataset.s!=='reveal') b.classList.toggle('active',b.dataset.s===s); });
+    state.scenario=s;
+    if(s==='profit') setA(A_PROFIT);
+    else if(s==='loss') setA(A_LOSS);
+    else if(s==='be') setA(A_BE);
+  }
+  document.querySelectorAll('#scenarios button').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(b.dataset.s==='reveal'){
+        state.dwl=!state.dwl; document.getElementById('t-dwl').checked=state.dwl;
+        b.classList.toggle('active',state.dwl); render(); return;
+      }
+      setScenario(b.dataset.s);
+    });
+  });
+  document.getElementById('dslider').addEventListener('input',function(e){
+    // free drag clears scenario highlight
+    document.querySelectorAll('#scenarios button').forEach(function(b){ if(b.dataset.s!=='reveal') b.classList.remove('active'); });
+    setA(parseFloat(e.target.value));
+  });
+  function bindToggle(id,key,extra){document.getElementById(id).addEventListener('change',function(e){state[key]=e.target.checked; if(extra)extra(e.target.checked); render();});}
+  bindToggle('t-pl','pl'); bindToggle('t-mr','mr'); bindToggle('t-atc','atc');
+  bindToggle('t-dwl','dwl',function(v){var rb=document.querySelector('#scenarios button[data-s=reveal]'); rb.classList.toggle('active',v);});
+
+  // drag the demand line directly on the SVG
+  function pointerA(clientY, clientX, svg){
+    var r=svg.getBoundingClientRect();
+    var px=(clientX-r.left)/r.width*W, py=(clientY-r.top)/r.height*H;
+    var q=(px-ML)/((W-ML-MR_))*QMAX;
+    var p=(( (H-MB)-py )/((H-MT-MB)))*PMAX;
+    // a = p + q  (since D=a-q => a=p+q at the grabbed point)
+    return p+q;
+  }
+  document.getElementById('chart').addEventListener('pointerdown',function(e){
+    var svg=e.currentTarget.querySelector('svg'); if(!svg)return;
+    var dragging=true;
+    function mv(ev){ if(!dragging)return;
+      document.querySelectorAll('#scenarios button').forEach(function(b){ if(b.dataset.s!=='reveal') b.classList.remove('active'); });
+      setA(pointerA(ev.clientY,ev.clientX,svg)); ev.preventDefault(); }
+    function up(){dragging=false; window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up);}
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+    setA(pointerA(e.clientY,e.clientX,svg));
+  });
+
+  // theme
+  document.getElementById('themeBtn').addEventListener('click',function(){
+    var cur=document.documentElement.getAttribute('data-theme');
+    var mql=window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isDark=cur==='dark'||(!cur&&mql);
+    document.documentElement.setAttribute('data-theme',isDark?'light':'dark'); render();
+  });
+  try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);}catch(_){}
+
+  setScenario('profit');
+})();
+</script>
+</body>
+</html>
